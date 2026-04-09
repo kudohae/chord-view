@@ -3,619 +3,1129 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chord View</title>
+<title>Chord Sheet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=JetBrains+Mono:wght@400;500;700;800&family=Outfit:wght@400;500;600;700;900&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0e0e10;
-    --surface: #17171a;
-    --surface2: #1e1e23;
-    --border: #2a2a32;
-    --text: #e8e8ec;
-    --text-dim: #6b6b7a;
-    --text-muted: #3a3a46;
-    --accent: #c8a96e;
-    --accent2: #7b9cff;
-    --bar-bg: #1a1a20;
-    --bar-border: #28283a;
-    --bar-active: #22222e;
+/* ══════════════════════════════════════════════
+   VARIABLES
+══════════════════════════════════════════════ */
+:root {
+  --bg:        #0b0b0f;
+  --s0:        #111116;
+  --s1:        #18181f;
+  --s2:        #1f1f28;
+  --s3:        #26262f;
+  --border:    #2c2c38;
+  --border2:   #38384a;
+  --text:      #e4e4ee;
+  --dim:       #6e6e88;
+  --muted:     #363648;
+  --gold:      #d4a853;
+  --gold-dim:  #6b521f;
+  --blue:      #7eb8f7;
+  --blue-dim:  #2a3f5e;
+  --green:     #5ecf8a;
+  --red:       #e06c75;
+  --r:         8px;
+  --mono:      'JetBrains Mono', monospace;
+  --serif:     'Cormorant Garamond', serif;
+  --sans:      'Outfit', sans-serif;
+}
+
+/* ══════════════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+input, select, button, textarea { font-family: inherit; }
+button { cursor: pointer; border: none; background: none; }
+input { border: none; outline: none; background: none; color: inherit; }
+
+/* Grain */
+body::after {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 999;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  opacity: 0.5;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+/* ══════════════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════════════ */
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ── Top Bar ── */
+.topbar {
+  position: sticky; top: 0; z-index: 200;
+  background: rgba(11,11,15,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 24px; gap: 12px; height: 52px;
+  flex-shrink: 0;
+}
+
+.topbar-logo {
+  font-family: var(--serif);
+  font-size: 18px; font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.topbar-sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
+/* title input in topbar */
+#meta-title {
+  font-family: var(--sans);
+  font-size: 14px; font-weight: 700;
+  color: var(--text);
+  background: transparent;
+  min-width: 80px; max-width: 260px; width: 160px;
+  flex-shrink: 1;
+}
+#meta-title::placeholder { color: var(--muted); }
+
+.meta-group {
+  display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0;
+}
+
+.meta-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 8px;
+  font-size: 11px;
+}
+.meta-pill label {
+  font-size: 8px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--dim); white-space: nowrap;
+}
+.meta-pill input, .meta-pill select {
+  font-family: var(--mono);
+  font-size: 11px; font-weight: 700;
+  color: var(--gold);
+  background: transparent;
+  width: auto; min-width: 24px;
+}
+.meta-pill select { cursor: pointer; }
+.meta-pill select option { background: var(--s2); color: var(--text); }
+
+.topbar-spacer { flex: 1; }
+
+.tbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 30px; border-radius: 6px;
+  font-size: 11px; font-weight: 700;
+  padding: 0 10px; cursor: pointer; border: none;
+  transition: background .15s, opacity .15s, transform .1s;
+  white-space: nowrap; letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+.tbtn:active { transform: scale(0.95); }
+.tbtn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+}
+.tbtn-ghost:hover { background: var(--s2); border-color: var(--border2); color: var(--text); }
+.tbtn-gold { background: var(--gold); color: #0b0b0f; }
+.tbtn-gold:hover { background: #e8ba5f; }
+.tbtn-icon { width: 30px; padding: 0; }
+.tbtn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+/* ── Sidebar + Main ── */
+.workspace { display: flex; flex: 1; min-height: 0; }
+
+.sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--s0);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar-section { padding: 16px; border-bottom: 1px solid var(--border); }
+.sidebar-label {
+  font-size: 8px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.18em;
+  color: var(--dim); margin-bottom: 10px;
+}
+
+/* Section list items */
+.sec-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 8px; border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer; transition: background .12s, border-color .12s;
+  margin-bottom: 4px; user-select: none;
+}
+.sec-item:hover { background: var(--s2); }
+.sec-item.active { background: var(--s2); border-color: var(--border2); }
+.sec-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sec-item-name { font-size: 12px; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sec-item-bars { font-family: var(--mono); font-size: 9px; color: var(--dim); flex-shrink: 0; }
+.sec-item-drag { color: var(--muted); cursor: grab; flex-shrink: 0; font-size: 14px; }
+.sec-item-drag:active { cursor: grabbing; }
+.sec-del { color: var(--muted); font-size: 14px; flex-shrink: 0; line-height: 1; padding: 2px; border-radius: 3px; }
+.sec-del:hover { color: var(--red); background: rgba(224,108,117,0.1); }
+
+/* Add section area */
+.add-sec-row {
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+}
+.color-swatches { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+.swatch {
+  width: 18px; height: 18px; border-radius: 4px; cursor: pointer;
+  border: 2px solid transparent; transition: border-color .12s, transform .12s;
+  flex-shrink: 0;
+}
+.swatch:hover { transform: scale(1.15); }
+.swatch.selected { border-color: white; }
+
+.name-input {
+  flex: 1; min-width: 80px;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 8px;
+  font-size: 11px; font-weight: 600; color: var(--text);
+}
+.name-input::placeholder { color: var(--muted); }
+.name-input:focus { border-color: var(--border2); }
+
+.bars-input {
+  width: 44px;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 6px; text-align: center;
+  font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--gold);
+}
+.bars-input:focus { border-color: var(--border2); }
+
+/* Transpose */
+.transpose-row { display: flex; gap: 4px; align-items: center; }
+.transpose-btn {
+  width: 28px; height: 28px;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 5px; font-size: 14px; font-weight: 900; color: var(--dim);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .12s;
+}
+.transpose-btn:hover { background: var(--s3); color: var(--text); border-color: var(--border2); }
+.transpose-display {
+  flex: 1; text-align: center;
+  font-family: var(--mono); font-size: 10px; font-weight: 700; color: var(--dim);
+}
+
+/* ── Score Area ── */
+.score-area {
+  flex: 1; overflow-y: auto;
+  padding: 32px 36px 180px;
+}
+
+.score-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 60vh; gap: 16px; opacity: 0.3;
+}
+.score-empty .e-icon { font-size: 52px; }
+.score-empty p { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: var(--dim); text-align: center; line-height: 1.8; }
+
+/* Section block in score */
+.score-block { margin-bottom: 40px; animation: fadeSlide .25s ease both; }
+@keyframes fadeSlide { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+.score-block-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px;
+}
+.score-block-bar { width: 3px; border-radius: 2px; flex-shrink: 0; align-self: stretch; min-height: 20px; }
+.score-block-name {
+  font-family: var(--serif);
+  font-size: 17px; font-weight: 700; letter-spacing: 0.04em;
+}
+.score-block-meta {
+  font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--dim);
+  display: flex; gap: 8px; align-items: center;
+}
+.score-block-meta span { display: flex; align-items: center; gap: 4px; }
+.score-block-memo {
+  font-size: 10px; font-style: italic; color: var(--gold); opacity: 0.8;
+  max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Bars row group */
+.bars-row-group { margin-bottom: 8px; display: flex; align-items: stretch; gap: 6px; }
+.row-label {
+  font-family: var(--mono); font-size: 8px; font-weight: 700;
+  color: var(--muted); width: 24px; flex-shrink: 0;
+  display: flex; align-items: flex-start; padding-top: 10px;
+  letter-spacing: 0.05em;
+}
+
+.bars-row { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; }
+
+/* Individual bar */
+.bar-block {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  flex: 1; min-width: 120px; max-width: 200px;
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.bar-block:focus-within { border-color: var(--border2); }
+
+.bar-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 8px 0;
+}
+.bar-num {
+  font-family: var(--mono); font-size: 7px; font-weight: 800;
+  color: var(--muted); letter-spacing: 0.1em;
+}
+
+/* Beat slots grid */
+.beat-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 2px; padding: 4px 6px 6px;
+}
+
+.beat-slot {
+  position: relative;
+  background: var(--s2);
+  border-radius: 4px;
+  min-height: 38px;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  padding: 3px 4px;
+  transition: background .12s;
+}
+.beat-slot:focus-within { background: var(--s3); }
+
+.beat-num {
+  position: absolute; top: 2px; left: 3px;
+  font-family: var(--mono); font-size: 6px;
+  font-weight: 800; color: var(--muted);
+  letter-spacing: 0.05em;
+  user-select: none; pointer-events: none;
+}
+
+.beat-input {
+  width: 100%; background: transparent;
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: var(--blue); text-align: center;
+  caret-color: var(--gold);
+  padding-top: 8px;
+  line-height: 1.3;
+}
+.beat-input::placeholder { color: var(--muted); font-weight: 400; font-size: 9px; }
+.beat-input:focus { color: var(--text); }
+
+/* ── Section Memo (inline, per section) ── */
+.section-memo-input {
+  background: transparent;
+  border: none; border-bottom: 1px solid transparent;
+  font-size: 10px; font-style: italic; color: var(--gold);
+  padding: 0 2px; flex: 1; min-width: 0;
+  transition: border-color .12s;
+}
+.section-memo-input::placeholder { color: var(--muted); font-style: italic; }
+.section-memo-input:focus { border-bottom-color: var(--gold-dim); outline: none; }
+
+/* Section bars badge + quick-resize */
+.bars-badge {
+  font-family: var(--mono); font-size: 9px; font-weight: 800;
+  color: var(--dim); cursor: default;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 6px;
+  display: flex; align-items: center; gap: 4px;
+}
+.bars-badge button {
+  color: var(--muted); font-size: 12px; line-height: 1;
+  width: 14px; height: 14px; display: flex; align-items: center; justify-content: center;
+  border-radius: 2px; transition: color .12s, background .12s;
+}
+.bars-badge button:hover { color: var(--text); background: var(--s3); }
+
+/* ── Flow Panel ── */
+.flow-panel {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 150;
+  background: rgba(11,11,15,0.96);
+  backdrop-filter: blur(24px);
+  border-top: 1px solid var(--border);
+  padding: 10px 36px 14px;
+}
+.flow-panel-label {
+  font-size: 7px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.22em;
+  color: var(--muted); margin-bottom: 8px;
+}
+.flow-seq {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 3px;
+  min-height: 26px;
+}
+.flow-token {
+  font-family: var(--mono); font-size: 10px; font-weight: 800;
+  padding: 3px 9px; border-radius: 5px;
+  border: 1px solid;
+  letter-spacing: 0.05em;
+  transition: opacity .12s; cursor: default;
+  display: flex; align-items: center; gap: 5px;
+}
+.flow-token:hover { opacity: 0.7; }
+.flow-token .ft-bars {
+  font-size: 7px; font-weight: 600; opacity: 0.5;
+}
+.flow-arrow {
+  font-size: 10px; color: var(--muted); font-weight: 900;
+  font-family: var(--mono); user-select: none;
+  padding: 0 1px;
+}
+.flow-empty { font-size: 10px; color: var(--muted); font-style: italic; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 72px; left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--s3); color: var(--text);
+  padding: 7px 18px; border-radius: 99px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s, transform .2s; z-index: 9999;
+  border: 1px solid var(--border2);
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Sortable ghost ── */
+.sortable-ghost { opacity: 0.2; background: var(--s3) !important; }
+
+/* ══════════════════════════════════════════════
+   PRINT
+══════════════════════════════════════════════ */
+@media print {
+  @page { size: A4; margin: 14mm; }
+  body { background: white; color: #111; }
+  body::after { display: none; }
+  .topbar, .sidebar, .flow-panel, #toast { display: none !important; }
+  .workspace { display: block; }
+  .score-area { padding: 0; overflow: visible; }
+
+  /* Print header */
+  .print-header {
+    display: flex !important;
+    align-items: baseline; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 18px; padding-bottom: 10px;
+    border-bottom: 2px solid #111;
   }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    min-height: 100vh;
-    padding: 0;
+  .print-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22pt; font-weight: 700; color: #000;
   }
+  .print-meta { font-size: 9pt; color: #555; display: flex; gap: 10px; align-items: center; }
+  .print-meta span { display: flex; gap: 3px; align-items: center; }
+  .print-meta b { font-weight: 800; }
 
-  /* ── Grain overlay ── */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.6;
-  }
+  .score-empty, .print-only-hide { display: none !important; }
+  .score-block { break-inside: avoid; margin-bottom: 20pt; }
+  .bar-block { border: 1px solid #ccc !important; background: white !important; }
+  .beat-slot { background: #f8f8f8 !important; }
+  .beat-input { color: #1a3b6e !important; font-size: 9pt !important; }
+  .beat-num { color: #bbb !important; }
+  .bar-num { color: #bbb !important; }
+  .score-block-name { color: #111 !important; }
+  .score-block-meta { color: #555 !important; }
+  .row-label { color: #ccc !important; }
+  .flow-panel { display: none !important; }
 
-  /* ── Top bar ── */
-  .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(14,14,16,0.92);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 32px;
-    height: 56px;
-    gap: 20px;
-  }
-
-  .topbar-left {
-    display: flex;
-    align-items: baseline;
-    gap: 16px;
-    min-width: 0;
-    flex: 1;
-  }
-
-  #song-title-display {
-    font-family: 'Playfair Display', serif;
-    font-size: 22px;
-    font-weight: 900;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 360px;
-    letter-spacing: -0.02em;
-  }
-
-  .meta-chips {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-
-  .meta-chip {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 3px 8px;
-  }
-
-  .meta-chip .label {
-    font-size: 8px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-dim);
-  }
-
-  .meta-chip .value {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--accent);
-  }
-
-  .sync-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: #4ade80;
-    flex-shrink: 0;
-    transition: background 0.3s;
-  }
-  .sync-dot.stale { background: #ef4444; }
-  .sync-dot.empty { background: var(--text-muted); }
-
-  .sync-label {
-    font-size: 10px;
-    color: var(--text-dim);
-    white-space: nowrap;
-  }
-
-  /* ── Main content ── */
-  .main {
-    position: relative;
-    z-index: 1;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 40px 32px 120px;
-  }
-
-  /* ── Empty state ── */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 120px 0;
-    opacity: 0.35;
-  }
-
-  .empty-state .icon {
-    font-size: 48px;
-    opacity: 0.4;
-  }
-
-  .empty-state p {
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    color: var(--text-dim);
-  }
-
-  /* ── Section score block ── */
-  .score-section {
-    margin-bottom: 36px;
-    animation: fadeUp 0.3s ease both;
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .section-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
-  }
-
-  .section-color-bar {
-    width: 3px;
-    height: 22px;
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
-
-  .section-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 13px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-  }
-
-  .section-meta-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    font-size: 10px;
-    color: var(--text-dim);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .section-meta-sep {
-    width: 3px; height: 3px;
-    border-radius: 50%;
-    background: var(--text-muted);
-  }
-
-  /* ── Bar grid ── */
-  .bar-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-  }
-
-  .bar-cell {
-    background: var(--bar-bg);
-    border: 1px solid var(--bar-border);
-    border-radius: 8px;
-    padding: 10px 14px 10px 12px;
-    min-height: 52px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    position: relative;
-    transition: border-color 0.15s, background 0.15s;
-  }
-
-  .bar-cell:hover {
-    background: var(--bar-active);
-    border-color: #3a3a50;
-  }
-
-  .bar-number {
-    font-size: 8px;
-    font-weight: 700;
-    color: var(--text-muted);
-    font-family: 'IBM Plex Mono', monospace;
-    letter-spacing: 0.06em;
-    margin-bottom: 4px;
-  }
-
-  .bar-chord {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--accent2);
-    letter-spacing: 0.02em;
-    line-height: 1.2;
-    word-break: break-all;
-  }
-
-  .bar-chord.empty {
-    color: var(--text-muted);
-    font-style: italic;
-    font-weight: 400;
-    font-size: 11px;
-  }
-
-  /* beat dots */
-  .beat-dots {
-    display: flex;
-    gap: 3px;
-    margin-top: 6px;
-  }
-
-  .beat-dot {
-    width: 4px; height: 4px;
-    border-radius: 50%;
-    background: var(--text-muted);
-  }
-
-  .beat-dot.strong {
-    background: var(--text-dim);
-    width: 5px; height: 5px;
-  }
-
-  /* memo stripe */
-  .bar-memo {
-    position: absolute;
-    right: 6px;
-    top: 6px;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--accent);
-    opacity: 0.6;
-  }
-
-  /* ── Row line separator ── */
-  .row-line {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    margin-bottom: 6px;
-  }
-
-  .row-num {
-    font-size: 8px;
-    font-family: 'IBM Plex Mono', monospace;
-    color: var(--text-muted);
-    width: 28px;
-    flex-shrink: 0;
-    text-align: right;
-    padding-right: 8px;
-  }
-
-  /* ── Section Flow (bottom) ── */
-  .flow-panel {
-    position: fixed;
-    bottom: 0;
-    left: 0; right: 0;
-    z-index: 50;
-    background: rgba(14,14,16,0.96);
-    backdrop-filter: blur(20px);
-    border-top: 1px solid var(--border);
-    padding: 14px 32px 18px;
-  }
-
-  .flow-label {
-    font-size: 8px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    color: var(--text-muted);
-    margin-bottom: 10px;
-  }
-
-  .flow-sequence {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .flow-token {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 700;
-    font-family: 'IBM Plex Mono', monospace;
-    letter-spacing: 0.04em;
-    border: 1px solid transparent;
-    transition: opacity 0.15s;
-    cursor: default;
-  }
-
-  .flow-token:hover { opacity: 0.75; }
-
-  .flow-sep {
-    font-size: 11px;
-    color: var(--text-muted);
-    font-family: 'IBM Plex Mono', monospace;
-    font-weight: 700;
-    margin: 0 1px;
-    user-select: none;
-  }
-
-  .flow-bars {
-    font-size: 8px;
-    opacity: 0.5;
-    font-weight: 600;
-  }
-
-  /* ── Scrollbar ── */
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
-
-  /* ── Print ── */
-  @media print {
-    .topbar, .flow-panel { position: static; backdrop-filter: none; }
-    body { background: white; color: black; }
-    body::before { display: none; }
-    :root {
-      --bg: white; --surface: white; --surface2: #f5f5f5;
-      --border: #ccc; --text: #111; --text-dim: #555; --text-muted: #aaa;
-      --accent: #1d4ed8; --accent2: #1d4ed8;
-      --bar-bg: #fafafa; --bar-border: #ddd; --bar-active: #f0f0f0;
-    }
-    .flow-panel { border-top: 2px solid #111; background: white; }
-  }
+  .print-flow { display: block !important; margin-top: 20pt; padding-top: 10pt; border-top: 1px solid #ccc; }
+  .print-flow-label { font-size: 7pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: #888; margin-bottom: 6pt; }
+  .print-flow-seq { display: flex; flex-wrap: wrap; gap: 3pt; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 8pt; font-weight: 700; }
+}
+.print-header { display: none; }
+.print-flow { display: none; }
 </style>
 </head>
 <body>
+<div id="toast"></div>
+<div class="app">
 
-<!-- Top bar -->
+<!-- ══ TOP BAR ══ -->
 <div class="topbar">
-  <div class="topbar-left">
-    <div id="song-title-display">—</div>
-    <div class="meta-chips" id="meta-chips"></div>
+  <span class="topbar-logo">♩ Chord Sheet</span>
+  <div class="topbar-sep"></div>
+
+  <input id="meta-title" type="text" placeholder="Song Title" maxlength="60" autocomplete="off" spellcheck="false">
+
+  <div class="topbar-sep"></div>
+
+  <div class="meta-group">
+    <div class="meta-pill">
+      <label>Key</label>
+      <select id="meta-key">
+        <option value="">—</option>
+        <optgroup label="Major">
+          <option>C</option><option>C#</option><option>Db</option><option>D</option>
+          <option>D#</option><option>Eb</option><option>E</option><option>F</option>
+          <option>F#</option><option>Gb</option><option>G</option><option>G#</option>
+          <option>Ab</option><option>A</option><option>A#</option><option>Bb</option><option>B</option>
+        </optgroup>
+        <optgroup label="Minor">
+          <option>Cm</option><option>C#m</option><option>Dm</option><option>Ebm</option>
+          <option>Em</option><option>Fm</option><option>F#m</option><option>Gm</option>
+          <option>G#m</option><option>Am</option><option>Bbm</option><option>Bm</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="meta-pill">
+      <label>BPM</label>
+      <input id="meta-bpm" type="number" min="20" max="400" placeholder="120" style="width:38px;">
+    </div>
+    <div class="meta-pill">
+      <label>Time</label>
+      <select id="meta-time">
+        <option>4/4</option><option>3/4</option><option>6/8</option><option>5/4</option><option>7/8</option><option>2/4</option>
+      </select>
+    </div>
+    <div class="meta-pill">
+      <label>Feel</label>
+      <select id="meta-feel">
+        <option value="">—</option>
+        <option>Straight</option><option>Swing</option><option>Shuffle</option><option>Ballad</option><option>Funk</option><option>Latin</option><option>Bossa</option>
+      </select>
+    </div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-    <div class="sync-dot empty" id="sync-dot"></div>
-    <span class="sync-label" id="sync-label">Song Form Builder 대기 중</span>
+
+  <div class="topbar-spacer"></div>
+
+  <div style="display:flex;gap:6px;align-items:center;">
+    <button class="tbtn tbtn-ghost tbtn-icon" id="undo-btn" title="Undo (Ctrl+Z)" disabled>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg>
+    </button>
+    <button class="tbtn tbtn-ghost tbtn-icon" id="redo-btn" title="Redo (Ctrl+Y)" disabled>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 014-4h12"/></svg>
+    </button>
+    <div class="topbar-sep"></div>
+    <button class="tbtn tbtn-ghost" id="btn-open" title="Open .chordsheet">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h6a2 2 0 012 2v2"/><path d="M3 17l3-3 3 3 3-3 3 3"/></svg>
+      Open
+    </button>
+    <button class="tbtn tbtn-ghost" id="btn-save" title="Save (Ctrl+S)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save
+    </button>
+    <button class="tbtn tbtn-ghost" id="btn-pdf" title="Print / PDF">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      PDF
+    </button>
+  </div>
+</div>
+<input type="file" id="file-input" accept=".chordsheet" style="display:none;">
+
+<!-- ══ WORKSPACE ══ -->
+<div class="workspace">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+
+    <!-- Sections list -->
+    <div class="sidebar-section" style="flex:1;overflow-y:auto;">
+      <div class="sidebar-label">Sections</div>
+      <div id="section-list"></div>
+    </div>
+
+    <!-- Add section -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Add Section</div>
+      <div class="color-swatches" id="color-swatches"></div>
+      <div class="add-sec-row" style="margin-bottom:6px;">
+        <input class="name-input" id="new-sec-name" placeholder="Name (e.g. Verse)" maxlength="20"
+          onkeydown="if(event.key==='Enter') addSection()">
+        <input class="bars-input" id="new-sec-bars" type="number" min="1" max="64" value="8">
+      </div>
+      <div class="add-sec-row">
+        <input class="name-input" id="new-sec-memo" placeholder="Memo / note (optional)" maxlength="60"
+          style="flex:1;" onkeydown="if(event.key==='Enter') addSection()">
+      </div>
+      <button class="tbtn tbtn-gold" style="width:100%;margin-top:8px;" onclick="addSection()">+ Add Section</button>
+    </div>
+
+    <!-- Transpose -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Transpose</div>
+      <div class="transpose-row">
+        <button class="transpose-btn" onclick="transpose(-1)">♭</button>
+        <div class="transpose-display" id="transpose-display">semitones: 0</div>
+        <button class="transpose-btn" onclick="transpose(+1)">♯</button>
+      </div>
+      <button class="tbtn tbtn-ghost" style="width:100%;margin-top:6px;font-size:10px;" onclick="transpose(0, true)">Reset</button>
+    </div>
+
+    <!-- Global memo / notes -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Song Notes</div>
+      <textarea id="meta-notes"
+        style="width:100%;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:7px 8px;font-size:10px;color:var(--dim);resize:vertical;min-height:56px;font-family:var(--sans);line-height:1.5;"
+        placeholder="Capo, feel notes, references…"></textarea>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- ── Score Area ── -->
+  <div class="score-area" id="score-area">
+
+    <!-- Print-only header -->
+    <div class="print-header" id="print-header"></div>
+
+    <div class="score-empty" id="score-empty">
+      <div class="e-icon">𝄞</div>
+      <p>Add a section from the sidebar<br>to start building your chord sheet</p>
+    </div>
+
+    <div id="score-blocks"></div>
+
+    <!-- Print-only flow -->
+    <div class="print-flow" id="print-flow"></div>
+
+  </div>
+</div><!-- /workspace -->
+
+<!-- ══ FLOW PANEL ══ -->
+<div class="flow-panel">
+  <div class="flow-panel-label">Section Flow</div>
+  <div class="flow-seq" id="flow-seq">
+    <span class="flow-empty">No sections yet</span>
   </div>
 </div>
 
-<!-- Main score area -->
-<div class="main" id="main-content">
-  <div class="empty-state" id="empty-state">
-    <div class="icon">♩</div>
-    <p>Song Form Builder에서 섹션을 추가하면<br>여기에 악보가 표시됩니다</p>
-  </div>
-</div>
+</div><!-- /app -->
 
-<!-- Section flow panel (bottom) -->
-<div class="flow-panel" id="flow-panel" style="display:none;">
-  <div class="flow-label">Section Flow</div>
-  <div class="flow-sequence" id="flow-sequence"></div>
-</div>
-
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
-let lastTs = null;
-let currentData = null;
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+let sections = [];   // { id, name, color, bars, memo, beats: [[beat0..beat3] x bars] }
+let undoStack = [], redoStack = [];
+let transposeOffset = 0;
+let sortable = null;
 
-/* ── Parse chords from string into array of bar-sized chunks ── */
-function parseChordBars(chordStr, totalBars) {
-  if (!chordStr || !chordStr.trim()) return Array(totalBars).fill('');
+const COLORS = [
+  '#7eb8f7','#5ecf8a','#e06c75','#d4a853','#c678dd',
+  '#61afef','#e5c07b','#98c379','#e06c75','#56b6c2',
+  '#be5046','#528bff'
+];
+let selectedColor = COLORS[0];
 
-  // Split by common separators: –, -, |, /  or whitespace-groups
-  const raw = chordStr
-    .replace(/[–—]/g, '-')
-    .split(/\s*[\|\-\/]\s*|\s{2,}/)
-    .map(s => s.trim())
-    .filter(Boolean);
+/* ══════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════ */
+window.addEventListener('load', () => {
+  renderColorSwatches();
+  renderAll();
+  document.addEventListener('keydown', handleKey);
 
-  if (!raw.length) return Array(totalBars).fill('');
-
-  // Fill bars: cycle if fewer chords than bars
-  const bars = [];
-  for (let i = 0; i < totalBars; i++) {
-    bars.push(raw[i % raw.length] || '');
-  }
-  return bars;
-}
-
-/* ── Render everything ── */
-function render(data) {
-  currentData = data;
-  const { title, meta, sections } = data;
-
-  // Title
-  document.getElementById('song-title-display').textContent = title || 'Untitled';
-  document.title = (title || 'Chord View') + ' — Chord View';
-
-  // Meta chips
-  const chips = document.getElementById('meta-chips');
-  chips.innerHTML = '';
-  const metaItems = [
-    { label: 'Key', value: meta?.key },
-    { label: 'BPM', value: meta?.bpm },
-    { label: 'Time', value: meta?.time },
-  ];
-  metaItems.forEach(({ label, value }) => {
-    if (!value) return;
-    chips.innerHTML += `
-      <div class="meta-chip">
-        <span class="label">${label}</span>
-        <span class="value">${value}</span>
-      </div>`;
+  // meta sync
+  ['meta-title','meta-bpm','meta-notes'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => renderFlowAndPrint());
+  });
+  ['meta-key','meta-time','meta-feel'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => renderFlowAndPrint());
   });
 
-  const main = document.getElementById('main-content');
-  const emptyState = document.getElementById('empty-state');
-  const flowPanel = document.getElementById('flow-panel');
+  document.getElementById('btn-save').addEventListener('click', saveFile);
+  document.getElementById('btn-open').addEventListener('click', () => document.getElementById('file-input').click());
+  document.getElementById('file-input').addEventListener('change', openFile);
+  document.getElementById('btn-pdf').addEventListener('click', () => { buildPrintHeader(); window.print(); });
 
-  if (!sections || !sections.length) {
-    emptyState.style.display = 'flex';
-    flowPanel.style.display = 'none';
-    // Clear old score blocks
-    main.querySelectorAll('.score-section').forEach(el => el.remove());
+  // Restore from localStorage
+  try {
+    const saved = localStorage.getItem('chordsheet-autosave');
+    if (saved) { loadFromJSON(JSON.parse(saved)); toast('⟳ 자동 저장 복원됨'); }
+  } catch(e) {}
+});
+
+/* ══════════════════════════════════════════════
+   UNDO / REDO
+══════════════════════════════════════════════ */
+function saveUndo() {
+  undoStack.push(snapshot());
+  if (undoStack.length > 60) undoStack.shift();
+  redoStack = [];
+  updateUndoRedoBtns();
+  autosave();
+}
+function snapshot() {
+  return JSON.stringify({ sections: sections.map(s => ({...s, beats: s.beats.map(b => [...b])})) });
+}
+function restore(snap) {
+  const d = JSON.parse(snap);
+  sections = d.sections.map(s => ({...s, beats: s.beats.map(b => [...b])}));
+  renderAll();
+}
+function undo() {
+  if (!undoStack.length) return;
+  redoStack.push(snapshot());
+  restore(undoStack.pop());
+  updateUndoRedoBtns();
+  toast('↩ Undo');
+}
+function redo() {
+  if (!redoStack.length) return;
+  undoStack.push(snapshot());
+  restore(redoStack.pop());
+  updateUndoRedoBtns();
+  toast('↪ Redo');
+}
+function updateUndoRedoBtns() {
+  document.getElementById('undo-btn').disabled = !undoStack.length;
+  document.getElementById('redo-btn').disabled = !redoStack.length;
+}
+
+/* ══════════════════════════════════════════════
+   AUTOSAVE
+══════════════════════════════════════════════ */
+let autoSaveTimer = null;
+function autosave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    try { localStorage.setItem('chordsheet-autosave', JSON.stringify(buildSaveData())); } catch(e) {}
+  }, 800);
+}
+
+/* ══════════════════════════════════════════════
+   SECTIONS
+══════════════════════════════════════════════ */
+function makeBeatGrid(bars, existing) {
+  const beats = [];
+  for (let i = 0; i < bars; i++) {
+    beats.push(existing && existing[i] ? [...existing[i]] : ['','','','']);
+  }
+  return beats;
+}
+
+function addSection() {
+  const nameEl = document.getElementById('new-sec-name');
+  const barsEl = document.getElementById('new-sec-bars');
+  const memoEl = document.getElementById('new-sec-memo');
+  const name = nameEl.value.trim() || 'Section';
+  const bars = Math.max(1, Math.min(64, parseInt(barsEl.value) || 8));
+  const memo = memoEl.value.trim();
+
+  saveUndo();
+  sections.push({
+    id: Date.now() + Math.random(),
+    name, color: selectedColor, bars, memo,
+    beats: makeBeatGrid(bars)
+  });
+  nameEl.value = '';
+  memoEl.value = '';
+  renderAll();
+  toast(`✓ "${name}" added`);
+}
+
+function deleteSection(id) {
+  saveUndo();
+  sections = sections.filter(s => s.id !== id);
+  renderAll();
+}
+
+function resizeBars(id, delta) {
+  const s = sections.find(x => x.id === id);
+  if (!s) return;
+  const newBars = Math.max(1, Math.min(64, s.bars + delta));
+  if (newBars === s.bars) return;
+  saveUndo();
+  s.bars = newBars;
+  s.beats = makeBeatGrid(newBars, s.beats);
+  renderAll();
+}
+
+function updateBeat(id, barIdx, beatIdx, value) {
+  const s = sections.find(x => x.id === id);
+  if (!s) return;
+  s.beats[barIdx][beatIdx] = value;
+  autosave();
+  renderFlowAndPrint();
+}
+
+function updateSectionMemo(id, value) {
+  const s = sections.find(x => x.id === id);
+  if (!s) return;
+  s.memo = value;
+  autosave();
+  renderFlowAndPrint();
+}
+
+/* ══════════════════════════════════════════════
+   TRANSPOSE
+══════════════════════════════════════════════ */
+const CHROMATIC = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const ENHARMONIC = {'Db':'C#','Eb':'D#','Fb':'E','Gb':'F#','Ab':'G#','Bb':'A#','Cb':'B'};
+
+function transposeNote(note, semitones) {
+  if (!note || !note.trim()) return note;
+  // Extract root, quality, bass
+  const m = note.match(/^([A-G][b#]?)(.*)$/);
+  if (!m) return note;
+  let root = m[1], rest = m[2];
+  root = ENHARMONIC[root] || root;
+  const idx = CHROMATIC.indexOf(root);
+  if (idx === -1) return note;
+  const newRoot = CHROMATIC[((idx + semitones) % 12 + 12) % 12];
+  // Handle bass note
+  const bassM = rest.match(/^(.*?)\/([A-G][b#]?)$/);
+  if (bassM) {
+    let bass = ENHARMONIC[bassM[2]] || bassM[2];
+    const bi = CHROMATIC.indexOf(bass);
+    const newBass = bi !== -1 ? CHROMATIC[((bi + semitones) % 12 + 12) % 12] : bassM[2];
+    return newRoot + bassM[1] + '/' + newBass;
+  }
+  return newRoot + rest;
+}
+
+function transposeChordStr(str, semitones) {
+  if (!str || !semitones) return str;
+  // Split by whitespace, transpose each token that looks like a chord
+  return str.split(/(\s+)/).map(tok => {
+    if (/^[A-G]/.test(tok)) return transposeNote(tok, semitones);
+    return tok;
+  }).join('');
+}
+
+let currentTranspose = 0;
+function transpose(delta, reset = false) {
+  if (reset) { currentTranspose = 0; }
+  else { currentTranspose += delta; }
+  document.getElementById('transpose-display').textContent =
+    `semitones: ${currentTranspose >= 0 ? '+' : ''}${currentTranspose}`;
+  renderScoreBlocks();
+}
+
+/* ══════════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════════ */
+function renderAll() {
+  renderSidebar();
+  renderScoreBlocks();
+  renderFlowAndPrint();
+  initSortable();
+}
+
+function renderColorSwatches() {
+  const el = document.getElementById('color-swatches');
+  el.innerHTML = COLORS.map((c, i) => `
+    <div class="swatch${c === selectedColor ? ' selected' : ''}"
+      style="background:${c}" title="${c}"
+      onclick="selectColor('${c}')"></div>
+  `).join('');
+}
+
+function selectColor(c) {
+  selectedColor = c;
+  renderColorSwatches();
+}
+
+function renderSidebar() {
+  const list = document.getElementById('section-list');
+  if (!sections.length) {
+    list.innerHTML = '<div style="font-size:10px;color:var(--muted);padding:8px 0;font-style:italic;">No sections yet</div>';
     return;
   }
-
-  emptyState.style.display = 'none';
-
-  // ── Build unique section types (first occurrence defines chords) ──
-  const uniqueSections = [];
-  const seenNames = new Set();
-  sections.forEach(s => {
-    if (!seenNames.has(s.name)) {
-      seenNames.add(s.name);
-      uniqueSections.push(s);
-    }
-  });
-
-  // ── Render score blocks ──
-  // Remove old
-  main.querySelectorAll('.score-section').forEach(el => el.remove());
-
-  uniqueSections.forEach((s, si) => {
-    const bars = parseInt(s.bars) || 4;
-    const chords = parseChordBars(s.chords, bars);
-    const timeNum = parseInt((meta?.time || '4/4').split('/')[0]) || 4;
-
-    // Build rows of 4 bars
-    const rows = [];
-    for (let i = 0; i < bars; i += 4) {
-      rows.push(chords.slice(i, i + 4));
-    }
-
-    const methodLabel = s.method === 'Custom' ? (s.customMethod || '') : (s.method || '');
-
-    const block = document.createElement('div');
-    block.className = 'score-section';
-    block.style.animationDelay = `${si * 40}ms`;
-
-    block.innerHTML = `
-      <div class="section-header">
-        <div class="section-color-bar" style="background:${s.color}"></div>
-        <span class="section-name" style="color:${s.color}">${s.name}</span>
-        <div class="section-meta-row">
-          <span>${bars} bars</span>
-          ${methodLabel ? `<div class="section-meta-sep"></div><span>${methodLabel}</span>` : ''}
-          ${s.dynamic ? `<div class="section-meta-sep"></div><span>Energy ${s.dynamic}</span>` : ''}
-          ${s.memo ? `<div class="section-meta-sep"></div><span style="color:var(--accent);font-style:italic;">${s.memo}</span>` : ''}
-        </div>
-      </div>
-      <div class="score-grid">
-        ${rows.map((row, rowIdx) => `
-          <div style="display:flex;align-items:stretch;margin-bottom:6px;">
-            <div class="row-num">${(rowIdx * 4 + 1)}</div>
-            <div class="bar-grid" style="flex:1;">
-              ${row.map((chord, ci) => {
-                const barNum = rowIdx * 4 + ci + 1;
-                const isEmpty = !chord.trim();
-                const beats = Array.from({length: timeNum}, (_, i) => 
-                  `<div class="beat-dot${i===0?' strong':''}"></div>`
-                ).join('');
-                return `
-                  <div class="bar-cell">
-                    <div>
-                      <div class="bar-number">${barNum}</div>
-                      <div class="bar-chord${isEmpty?' empty':''}">${isEmpty ? '/' : chord}</div>
-                    </div>
-                    <div class="beat-dots">${beats}</div>
-                  </div>`;
-              }).join('')}
-              ${row.length < 4 ? Array(4 - row.length).fill(`
-                <div class="bar-cell" style="opacity:0;pointer-events:none;"></div>
-              `).join('') : ''}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-
-    main.appendChild(block);
-  });
-
-  // ── Section Flow (bottom) ──
-  flowPanel.style.display = 'block';
-  const flowSeq = document.getElementById('flow-sequence');
-  flowSeq.innerHTML = '';
-
-  sections.forEach((s, idx) => {
-    const token = document.createElement('span');
-    token.className = 'flow-token';
-    token.style.cssText = `
-      background: ${s.color}18;
-      border-color: ${s.color}44;
-      color: ${s.color};
-    `;
-    // Short abbreviation
-    const abbr = s.name.replace(/[^A-Za-z0-9]/g, '').substring(0, 4).toUpperCase();
-    token.innerHTML = `${abbr}<span class="flow-bars">${s.bars}b</span>`;
-    token.title = `${s.name} (${s.bars} bars)`;
-    flowSeq.appendChild(token);
-
-    if (idx < sections.length - 1) {
-      const sep = document.createElement('span');
-      sep.className = 'flow-sep';
-      sep.textContent = '›';
-      flowSeq.appendChild(sep);
-    }
-  });
+  list.innerHTML = sections.map(s => `
+    <div class="sec-item" data-id="${s.id}">
+      <span class="sec-item-drag" title="Drag to reorder">⠿</span>
+      <span class="sec-dot" style="background:${s.color}"></span>
+      <span class="sec-item-name" title="${s.name}">${s.name}</span>
+      <span class="sec-item-bars">${s.bars}b</span>
+      <button class="sec-del" onclick="event.stopPropagation();deleteSection(${s.id})" title="Delete">✕</button>
+    </div>
+  `).join('');
 }
 
-/* ── Sync loop ── */
-function checkSync() {
-  try {
-    const raw = localStorage.getItem('sfb-live');
-    if (!raw) {
-      document.getElementById('sync-dot').className = 'sync-dot empty';
-      document.getElementById('sync-label').textContent = 'Song Form Builder 대기 중';
-      return;
+function renderScoreBlocks() {
+  const container = document.getElementById('score-blocks');
+  const empty = document.getElementById('score-empty');
+  if (!sections.length) { empty.style.display = 'flex'; container.innerHTML = ''; return; }
+  empty.style.display = 'none';
+
+  const timeNum = parseInt((document.getElementById('meta-time').value || '4/4').split('/')[0]) || 4;
+
+  container.innerHTML = sections.map((s, si) => {
+    // group bars into rows of 4
+    const rows = [];
+    for (let i = 0; i < s.bars; i += 4) {
+      rows.push({ start: i, bars: s.beats.slice(i, i + 4) });
     }
-    const data = JSON.parse(raw);
-    if (data._ts !== lastTs) {
-      lastTs = data._ts;
-      render(data);
-      document.getElementById('sync-dot').className = 'sync-dot';
-      const d = new Date(data._ts);
-      document.getElementById('sync-label').textContent =
-        `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')} 동기화됨`;
-    }
-  } catch(e) {
-    document.getElementById('sync-dot').className = 'sync-dot stale';
-    document.getElementById('sync-label').textContent = '동기화 오류';
+
+    return `
+    <div class="score-block" style="animation-delay:${si*30}ms" data-sid="${s.id}">
+      <div class="score-block-header">
+        <div class="score-block-bar" style="background:${s.color}"></div>
+        <span class="score-block-name" style="color:${s.color}">${s.name}</span>
+        <div class="score-block-meta">
+          <div class="bars-badge">
+            <button onclick="resizeBars(${s.id},-1)" title="−1 bar">−</button>
+            <span>${s.bars} bars</span>
+            <button onclick="resizeBars(${s.id},+1)" title="+1 bar">+</button>
+          </div>
+        </div>
+        <input class="section-memo-input"
+          value="${escHtml(s.memo)}"
+          placeholder="note…"
+          oninput="updateSectionMemo(${s.id}, this.value)"
+          style="max-width:220px;">
+      </div>
+
+      ${rows.map((row, ri) => `
+        <div class="bars-row-group">
+          <div class="row-label">${row.start + 1}</div>
+          <div class="bars-row">
+            ${row.bars.map((beats, bi) => {
+              const barNum = row.start + bi + 1;
+              return `
+              <div class="bar-block">
+                <div class="bar-header">
+                  <span class="bar-num">${barNum}</span>
+                </div>
+                <div class="beat-grid">
+                  ${beats.map((chord, ki) => {
+                    const display = transposeChordStr(chord, currentTranspose);
+                    return `
+                    <div class="beat-slot">
+                      <span class="beat-num">${ki+1}</span>
+                      <input class="beat-input"
+                        value="${escHtml(display)}"
+                        placeholder="${ki===0?'chord':''}"
+                        title="Bar ${barNum}, beat ${ki+1}"
+                        onchange="updateBeat(${s.id},${row.start+bi},${ki},reverseTranspose(this.value))"
+                        oninput="handleBeatInput(this, ${s.id},${row.start+bi},${ki})"
+                        onkeydown="handleBeatNav(event, ${s.id},${row.start+bi},${ki})"
+                        data-sid="${s.id}" data-bar="${row.start+bi}" data-beat="${ki}">
+                    </div>`;
+                  }).join('')}
+                </div>
+              </div>`;
+            }).join('')}
+            ${row.bars.length < 4 ? Array(4 - row.bars.length).fill('<div class="bar-block" style="opacity:0;pointer-events:none;"></div>').join('') : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  }).join('');
+}
+
+function renderFlowAndPrint() {
+  const seq = document.getElementById('flow-seq');
+  if (!sections.length) {
+    seq.innerHTML = '<span class="flow-empty">No sections yet</span>';
+  } else {
+    seq.innerHTML = sections.map((s, i) => `
+      <span class="flow-token" style="color:${s.color};border-color:${s.color}44;background:${s.color}15;">
+        ${s.name.replace(/[^A-Za-z0-9]/g,'').substring(0,5).toUpperCase() || s.name}
+        <span class="ft-bars">${s.bars}b</span>
+      </span>
+      ${i < sections.length - 1 ? '<span class="flow-arrow">›</span>' : ''}
+    `).join('');
+  }
+  autosave();
+}
+
+function buildPrintHeader() {
+  const title = document.getElementById('meta-title').value || 'Untitled';
+  const key   = document.getElementById('meta-key').value;
+  const bpm   = document.getElementById('meta-bpm').value;
+  const time  = document.getElementById('meta-time').value;
+  const feel  = document.getElementById('meta-feel').value;
+  const notes = document.getElementById('meta-notes').value;
+
+  const metaParts = [
+    key  ? `<span><b>Key</b> ${key}</span>` : '',
+    bpm  ? `<span><b>BPM</b> ${bpm}</span>` : '',
+    time ? `<span><b>Time</b> ${time}</span>` : '',
+    feel ? `<span><b>Feel</b> ${feel}</span>` : '',
+    notes? `<span style="font-style:italic;color:#888;">${notes}</span>` : '',
+  ].filter(Boolean).join('<span style="color:#ccc;margin:0 4px;">·</span>');
+
+  document.getElementById('print-header').innerHTML = `
+    <div class="print-title">${title}</div>
+    <div class="print-meta">${metaParts}</div>
+  `;
+
+  const pf = document.getElementById('print-flow');
+  if (sections.length) {
+    const flowText = sections.map(s => `${s.name}(${s.bars}b)`).join(' › ');
+    pf.innerHTML = `<div class="print-flow-label">Section Flow</div><div class="print-flow-seq">${flowText}</div>`;
   }
 }
 
-// Poll every 500ms
-checkSync();
-setInterval(checkSync, 500);
+/* ══════════════════════════════════════════════
+   BEAT NAVIGATION (Tab / Arrow through cells)
+══════════════════════════════════════════════ */
+function handleBeatInput(el, sid, barIdx, beatIdx) {
+  // live display of transposed chord - we store raw, show transposed
+  // value already shown; just trigger autosave
+  autosave();
+}
 
-// Also listen to storage events (cross-tab)
-window.addEventListener('storage', e => {
-  if (e.key === 'sfb-live') checkSync();
-});
+function reverseTranspose(val) {
+  // When user types into a transposed view, store the un-transposed version
+  if (!currentTranspose || !val.trim()) return val;
+  return transposeChordStr(val.trim(), -currentTranspose);
+}
+
+function handleBeatNav(e, sid, barIdx, beatIdx) {
+  if (e.key === 'Tab' || e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    if (e.key === 'Tab' || e.key === 'ArrowRight') {
+      if (e.key === 'Tab') e.preventDefault();
+      focusBeat(sid, barIdx, beatIdx + 1);
+    } else {
+      focusBeat(sid, barIdx, beatIdx - 1);
+    }
+  }
+  if (e.key === 'Enter') {
+    // Move to next bar, same beat
+    focusBeat(sid, barIdx + 1, beatIdx);
+    e.preventDefault();
+  }
+}
+
+function focusBeat(sid, barIdx, beatIdx) {
+  // wrap beats within bar
+  if (beatIdx > 3) { barIdx++; beatIdx = 0; }
+  if (beatIdx < 0) { barIdx--; beatIdx = 3; }
+  const s = sections.find(x => x.id === sid);
+  if (!s) return;
+  if (barIdx < 0 || barIdx >= s.bars) return;
+  const el = document.querySelector(`[data-sid="${sid}"][data-bar="${barIdx}"][data-beat="${beatIdx}"]`);
+  if (el) { el.focus(); el.select(); }
+}
+
+/* ══════════════════════════════════════════════
+   SORTABLE
+══════════════════════════════════════════════ */
+function initSortable() {
+  if (sortable) sortable.destroy();
+  sortable = Sortable.create(document.getElementById('section-list'), {
+    animation: 160,
+    handle: '.sec-item-drag',
+    ghostClass: 'sortable-ghost',
+    onEnd: e => {
+      saveUndo();
+      const newOrder = [];
+      document.querySelectorAll('#section-list .sec-item').forEach(el => {
+        const id = parseFloat(el.dataset.id);
+        const found = sections.find(s => s.id === id);
+        if (found) newOrder.push(found);
+      });
+      sections = newOrder;
+      renderAll();
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════
+   SAVE / LOAD
+══════════════════════════════════════════════ */
+function buildSaveData() {
+  return {
+    version: 1,
+    title:   document.getElementById('meta-title').value,
+    key:     document.getElementById('meta-key').value,
+    bpm:     document.getElementById('meta-bpm').value,
+    time:    document.getElementById('meta-time').value,
+    feel:    document.getElementById('meta-feel').value,
+    notes:   document.getElementById('meta-notes').value,
+    sections
+  };
+}
+
+function saveFile() {
+  const data = buildSaveData();
+  const name = (data.title || 'untitled').replace(/[^a-zA-Z0-9가-힣 _\-]/g,'').trim() || 'chord-sheet';
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}.chordsheet`;
+  a.click();
+  toast('💾 Saved');
+}
+
+function openFile(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      loadFromJSON(JSON.parse(ev.target.result));
+      toast('📂 Loaded');
+    } catch { alert('파일을 읽을 수 없습니다.'); }
+    e.target.value = '';
+  };
+  r.readAsText(f);
+}
+
+function loadFromJSON(d) {
+  if (d.title) document.getElementById('meta-title').value = d.title;
+  if (d.key)   document.getElementById('meta-key').value   = d.key;
+  if (d.bpm)   document.getElementById('meta-bpm').value   = d.bpm;
+  if (d.time)  document.getElementById('meta-time').value  = d.time;
+  if (d.feel)  document.getElementById('meta-feel').value  = d.feel;
+  if (d.notes) document.getElementById('meta-notes').value = d.notes;
+  sections = (d.sections || []).map(s => ({
+    ...s,
+    beats: makeBeatGrid(s.bars, s.beats)
+  }));
+  undoStack = []; redoStack = [];
+  updateUndoRedoBtns();
+  currentTranspose = 0;
+  document.getElementById('transpose-display').textContent = 'semitones: 0';
+  renderAll();
+}
+
+/* ══════════════════════════════════════════════
+   KEYBOARD
+══════════════════════════════════════════════ */
+function handleKey(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveFile(); }
+}
+
+document.getElementById('undo-btn').addEventListener('click', undo);
+document.getElementById('redo-btn').addEventListener('click', redo);
+
+/* ══════════════════════════════════════════════
+   UTIL
+══════════════════════════════════════════════ */
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
 </script>
 </body>
 </html>
